@@ -78,12 +78,18 @@ h2{font-size:20px}
 .howto{margin:0;padding-left:18px;font-size:14px;line-height:1.7;color:var(--card-soft)}
 /* game */
 #sGame{gap:8px;padding-block:8px 8px;overflow:hidden}
-.top{display:flex;align-items:center;gap:8px}
+.top{display:flex;align-items:center;gap:6px}
 .pill{flex:none;background:rgba(255,255,255,.15);border-radius:999px;padding:6px 10px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
-.timer{flex:none;min-width:54px;text-align:center;background:var(--sun);color:var(--sun-ink);border-radius:999px;padding:6px 10px;font-family:var(--display);font-size:18px;font-variant-numeric:tabular-nums}
+.timer{flex:none;min-width:46px;text-align:center;background:var(--sun);color:var(--sun-ink);border-radius:999px;padding:6px 8px;font-family:var(--display);font-size:18px;font-variant-numeric:tabular-nums}
 .timer.hurry{background:var(--coral);color:#fff}
 .word{flex:1;min-width:0;display:flex;justify-content:center;align-items:center;gap:4px;flex-wrap:wrap}
 .word .box{width:24px;height:30px;border-bottom:3px solid var(--on-ground);display:grid;place-items:center;font-family:var(--display);font-size:21px}
+.word .gap{width:8px;flex:none}
+.word .boxes{display:flex;gap:4px;flex-wrap:nowrap;justify-content:center}
+.word.stack{flex-direction:column;gap:2px}
+.word.many .boxes{gap:3px}
+.word.many .box{width:17px;height:24px;font-size:15px}
+.word.stack .lbl{font-size:11px;line-height:1}
 .word .full{font-family:var(--display);font-size:22px;letter-spacing:.06em}
 .word .lbl{font-size:13px;color:var(--on-ground-soft)}
 .menu-btn{flex:none;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);display:grid;place-items:center}
@@ -268,8 +274,8 @@ const PLAYERS = [
   {id:'chaehee',  name:'채희', short:'희', color:'#7C4DE8'},
 ];
 const P = Object.fromEntries(PLAYERS.map(p => [p.id, p]));
-// 초등학생이 쉽게 그릴 수 있는, 눈에 보이는 물건과 동물 위주
-const WORDS = ['사과','바나나','수박','포도','딸기','당근','옥수수','버섯','고양이','강아지','토끼','코끼리','기린','사자','펭귄','거북이','문어','상어','고래','나비','달팽이','개구리','오리','돼지','병아리','원숭이','곰','물고기','뱀','게','공룡','로봇','비행기','기차','자동차','자전거','배','버스','로켓','집','학교','성','텐트','우산','모자','안경','신발','양말','장갑','가방','시계','왕관','칫솔','거울','침대','의자','냉장고','텔레비전','컴퓨터','휴대폰','전구','그네','미끄럼틀','풍선','연','공','피아노','기타','북','책','연필','가위','편지','선물','케이크','피자','햄버거','김밥','아이스크림','사탕','도넛','빵','계란','우유','치킨','눈사람','무지개','구름','번개','해','달','별','비','산','바다','섬','나무','꽃','선인장','해바라기','크리스마스트리','유령','눈','코','입','귀','손','발','이빨','하트','열쇠','사다리','양초','보물상자','지도','악어','벌','개미','무당벌레','새우','불가사리','트로피','줄넘기','눈썹','수염','돋보기','망치','숟가락','컵','냄비','빗자루','소화기','신호등','다리','달팽이','고슴도치','부엉이','닭','젖소','양','말','오징어','해파리','캥거루','팬더','얼음','불','화산','물방울','튤립','네잎클로버','바퀴','종','나뭇잎','도토리','당나귀','포크'];
+// 초등 고학년 수준: 그릴 수 있지만 생각해서 표현해야 하는 사물·장소·직업·동작·운동·자연·음식·문화·속담
+const WORDS = ['놀이공원','수족관','도서관','우체국','소방서','공항','지하철','등대','풍차','이글루','롤러코스터','대관람차','회전목마','분수대','에스컬레이터','터널','댐','피라미드','초가집','기와집','무인도','사막','오아시스','폭포','빙산','동굴','정글','화산폭발','다리미','청소기','전자레인지','믹서기','체온계','청진기','현미경','망원경','나침반','지구본','모래시계','자석','건전지','콘센트','리모컨','헤드폰','키보드','프린터','드론','로봇청소기','소화기','구급상자','우편함','자물쇠','계산기','확성기','선풍기','가습기','손전등','낙하산','열기구','잠수함','구급차','굴착기','크레인','트랙터','오토바이','킥보드','스케이트보드','썰매','요트','인공위성','우주정거장','케이블카','헬리콥터','소방차','견인차','마술사','우주비행사','소방관','요리사','미용사','사진작가','화가','지휘자','발레리나','택배기사','과학자','치과의사','수의사','농부','어부','광부','탐험가','기사','심판','마라톤선수','경비원','아나운서','줄다리기','숨바꼭질','눈싸움','팔씨름','물구나무','낮잠','하품','재채기','딸꾹질','양치질','설거지','빨래','등산','낚시','캠핑','소풍','생일파티','졸업식','결혼식','운동회','받아쓰기','이사','응원','박수','셀카','노래방','영화관','불꽃놀이','연날리기','세배','김장','장보기','줄서기','벌서기','잠꼬대','코골이','방귀','꿀밤','태권도','양궁','펜싱','다이빙','스키점프','볼링','탁구','배드민턴','골프','씨름','컬링','서핑','피겨스케이팅','역도','체조','줄타기','번지점프','암벽등반','오로라','소나기','태풍','회오리바람','일식','지진','무지개다리','별똥별','화석','해시계','북극곰','카멜레온','공작새','딱따구리','박쥐','두더지','코뿔소','하마','얼룩말','고릴라','나무늘보','스컹크','해마','가오리','애벌레','올챙이','거미줄','벌집','개미굴','펠리컨','플라밍고','문어다리','고슴도치','너구리','독수리','철새','비빔밥','떡국','팥빙수','솜사탕','팝콘','샌드위치','스파게티','초밥','핫도그','붕어빵','호떡','탕후루','컵라면','도시락','주먹밥','파인애플','코코넛','밤송이','삼겹살','짜장면','떡꼬치','달고나','군고구마','수박화채','한복','태극기','거북선','첨성대','탈춤','윷놀이','제기차기','팽이치기','세뱃돈','송편','무궁화','장승','가마솥','맷돌','허수아비','횡단보도','저금통','졸업앨범','일기장','성적표','알람시계','투명인간','타임머신','마법사','요정','드래곤','인어','좀비','뱀파이어','미라','늑대인간','유에프오','보물지도','해적선','마법지팡이','수정구슬','램프','왕관','성벽','그림의 떡','우물 안 개구리','누워서 떡 먹기','하늘의 별 따기','식은 죽 먹기','발 없는 말','금강산도 식후경','티끌 모아 태산'];
 const W = 800, H = 600;
 const TAB = 'tab' + Math.random().toString(36).slice(2, 10);
 const COLORS = ['#1B1B1F','#7B7F8E','#E53935','#FF8F00','#FDD835','#43A047','#00ACC1','#1E5EFF','#8E24AA','#F06292','#8D5524','#FFCCA8'];
@@ -773,12 +779,16 @@ function renderWord(){
   if (showAll) html = `<span class="full">${esc(s.word)}</span>`;
   else {
     const total = s.time * 1000, el2 = Date.now() - s.drawStart;
-    let k = el2 >= total * 0.5 ? 1 : 0; if (el2 >= total * 0.75 && chars.length >= 4) k = 2;
-    k = Math.min(k, chars.length - 1);
-    const order = shuffle(chars.map((_, i) => i), seeded(hashStr(s.turnId)));
+    const letters = chars.map((c, i) => i).filter(i => chars[i] !== ' ');
+    let k = el2 >= total * 0.5 ? 1 : 0; if (el2 >= total * 0.75 && letters.length >= 4) k = 2;
+    k = Math.min(k, letters.length - 1);
+    const order = shuffle(letters, seeded(hashStr(s.turnId)));
     const open = new Set(order.slice(0, k));
-    html = chars.map((c, i) => `<span class="box">${open.has(i) ? esc(c) : ''}</span>`).join('') + `<span class="lbl">&nbsp;${chars.length}글자</span>`;
+    html = '<div class="boxes">' + chars.map((c, i) => c === ' ' ? '<span class="gap"></span>' : `<span class="box">${open.has(i) ? esc(c) : ''}</span>`).join('') + `</div><span class="lbl">${letters.length}글자${letters.length < chars.length ? ' · 띄어쓰기 있음' : ''}</span>`;
   }
+  const guessing = html.startsWith('<div class="boxes">');
+  el.classList.toggle('stack', guessing);
+  el.classList.toggle('many', guessing && [...s.word].length > 5);
   if (el._h !== html) { el.innerHTML = html; el._h = html }
 }
 function renderGame(){
@@ -786,7 +796,8 @@ function renderGame(){
   subTurn(s.turnId);
   const dr = drawerOf(s), mine = dr === me, player = s.order.includes(me);
   const round = Math.floor(s.turn / s.order.length) + 1;
-  $('#roundPill').textContent = `${Math.min(round, s.rounds)}/${s.rounds}라운드`;
+  $('#roundPill').textContent = `${Math.min(round, s.rounds)}/${s.rounds}`;
+  $('#roundPill').setAttribute('aria-label', `${s.rounds}라운드 중 ${Math.min(round, s.rounds)}라운드`);
   renderWord();
   const hitSet = new Set(hits.map(h => h.by));
   $('#scores').style.gridTemplateColumns = `repeat(${s.order.length},minmax(0,1fr))`;
