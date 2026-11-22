@@ -1,0 +1,8 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{coll}/{id} {
+      allow read, write: if coll in ['game', 'players', 'chat', 'hits', 'strokes', 'presence'];
+    }
+  }
+}

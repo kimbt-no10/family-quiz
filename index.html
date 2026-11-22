@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3353E6">
+<title>우리집 그림퀴즈</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: one phone-height column. Lobby scrolls; in game the canvas is fixed at 4:3 and only the chat scrolls. */
+:root{
+  --ground:#3353E6; --ground-deep:#2441CC; --on-ground:#FFFFFF; --on-ground-soft:rgba(255,255,255,.76);
+  --card:#FFFFFF; --card-ink:#161B3F; --card-soft:#646C97; --line:#E1E5F5; --chip:#EEF1FF;
+  --sun:#FFD23F; --sun-ink:#2A2100; --mint:#14B57D; --coral:#EE4B4B;
+  --paper:#FFFFFF;
+  --display:'Jua','Noto Sans KR',system-ui,sans-serif;
+  --body:'Noto Sans KR',system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --ground:#121A4A; --ground-deep:#0C1236; --on-ground:#F2F4FF; --on-ground-soft:rgba(242,244,255,.7);
+  --card:#1C2560; --card-ink:#EEF0FF; --card-soft:#A6ADD9; --line:#2D3778; --chip:#262F70;
+  --sun:#FFD23F; --sun-ink:#2A2100; --mint:#2BD69A; --coral:#FF6B6B; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --ground:#121A4A; --ground-deep:#0C1236; --on-ground:#F2F4FF; --on-ground-soft:rgba(242,244,255,.7);
+  --card:#1C2560; --card-ink:#EEF0FF; --card-soft:#A6ADD9; --line:#2D3778; --chip:#262F70;
+  --sun:#FFD23F; --sun-ink:#2A2100; --mint:#2BD69A; --coral:#FF6B6B; color-scheme:dark;
+}
+html,body{height:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-size:14px}
+[hidden]{display:none!important}
+body{background:var(--ground);color:var(--on-ground);font-family:var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+button:disabled{opacity:.45;cursor:default}
+#app{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;min-height:0}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px 4px}
+.brand{font-family:var(--display);font-size:20px;display:flex;align-items:center;gap:8px;letter-spacing:.01em}
+.brand svg{width:26px;height:26px}
+.me-chip{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.14);padding:5px 10px 5px 5px;border-radius:999px;font-size:13px}
+main{flex:1;min-height:0;display:flex;flex-direction:column}
+.screen{flex:1;min-height:0;display:flex;flex-direction:column;gap:16px;padding-block:12px 20px;overflow-y:auto}
+.center{align-items:center;justify-content:center;text-align:center}
+h1,h2{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
+h1{font-size:30px;line-height:1.2}
+h2{font-size:20px}
+.soft{color:var(--on-ground-soft);font-size:14px;line-height:1.6;margin:0}
+.av{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:17px;color:#fff;position:relative}
+.av.sm{width:24px;height:24px;font-size:13px}
+.av.lg{width:56px;height:56px;font-size:26px}
+.dot{position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;background:var(--mint);border:2px solid var(--card)}
+/* pick */
+.pick-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pick{background:var(--card);color:var(--card-ink);border-radius:20px;padding:20px 12px;display:flex;flex-direction:column;align-items:center;gap:10px;font-family:var(--display);font-size:22px;box-shadow:0 4px 0 var(--ground-deep)}
+.pick:active{transform:translateY(2px);box-shadow:0 2px 0 var(--ground-deep)}
+/* lobby */
+.card{background:var(--card);color:var(--card-ink);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card-title{font-size:13px;font-weight:700;color:var(--card-soft);letter-spacing:.04em}
+.plist{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pcard{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:var(--chip);text-align:left;border:2px solid transparent;min-width:0}
+.pcard.on{border-color:var(--mint)}
+.pcard .nm{font-weight:700;font-size:15px}
+.pcard .st{font-size:12px;color:var(--card-soft)}
+.pcard.on .st{color:var(--mint);font-weight:700}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:64px;padding:10px 8px;border-radius:12px;background:var(--chip);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+.seg button[aria-pressed="true"]{background:var(--ground);color:#fff}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.big{background:var(--sun);color:var(--sun-ink);font-family:var(--display);font-size:22px;padding:16px;border-radius:18px;box-shadow:0 4px 0 #C99A00;width:100%}
+.big:active:not(:disabled){transform:translateY(2px);box-shadow:0 2px 0 #C99A00}
+.notice{background:rgba(0,0,0,.18);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.55}
+.howto{margin:0;padding-left:18px;font-size:14px;line-height:1.7;color:var(--card-soft)}
+/* game */
+#sGame{gap:8px;padding-block:8px 8px;overflow:hidden}
+.top{display:flex;align-items:center;gap:8px}
+.pill{flex:none;background:rgba(255,255,255,.15);border-radius:999px;padding:6px 10px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.timer{flex:none;min-width:54px;text-align:center;background:var(--sun);color:var(--sun-ink);border-radius:999px;padding:6px 10px;font-family:var(--display);font-size:18px;font-variant-numeric:tabular-nums}
+.timer.hurry{background:var(--coral);color:#fff}
+.word{flex:1;min-width:0;display:flex;justify-content:center;align-items:center;gap:4px;flex-wrap:wrap}
+.word .box{width:24px;height:30px;border-bottom:3px solid var(--on-ground);display:grid;place-items:center;font-family:var(--display);font-size:21px}
+.word .full{font-family:var(--display);font-size:22px;letter-spacing:.06em}
+.word .lbl{font-size:13px;color:var(--on-ground-soft)}
+.menu-btn{flex:none;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);display:grid;place-items:center}
+.scores{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.sc{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border-radius:12px;padding:5px 6px;min-width:0;border:2px solid transparent}
+.sc.drawer{background:var(--sun);color:var(--sun-ink)}
+.sc.hit{border-color:var(--mint)}
+.sc.off{opacity:.55}
+.sc .meta{min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.sc .nm{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc .pt{font-size:13px;font-variant-numeric:tabular-nums}
+.stage{position:relative;width:100%;max-width:100%;aspect-ratio:4/3;background:var(--paper);border-radius:16px;overflow:hidden;flex:none;box-shadow:0 4px 0 var(--ground-deep)}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.stage.can-draw canvas{cursor:crosshair}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;text-align:center;background:rgba(22,27,63,.82);color:#fff}
+.ov .t{font-family:var(--display);font-size:22px;text-wrap:balance}
+.ov .s{font-size:14px;opacity:.85}
+.choices{display:flex;flex-direction:column;gap:8px;width:100%;max-width:280px}
+.choices button{background:var(--sun);color:var(--sun-ink);font-family:var(--display);font-size:24px;padding:12px;border-radius:14px}
+.reveal-word{font-family:var(--display);font-size:34px;color:var(--sun)}
+.gains{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.gain{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border-radius:999px;padding:4px 10px 4px 4px;font-size:14px;font-variant-numeric:tabular-nums}
+.tools{display:flex;flex-direction:column;gap:6px;flex:none}
+.swatches{display:flex;gap:6px;overflow-x:auto;padding:2px;scrollbar-width:none}
+.swatches::-webkit-scrollbar{display:none}
+.sw{flex:none;width:32px;height:32px;border-radius:50%;border:3px solid rgba(255,255,255,.35)}
+.sw[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 0 2px var(--ground-deep)}
+.toolrow{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+.tb{height:40px;border-radius:12px;background:rgba(255,255,255,.14);display:grid;place-items:center}
+.tb[aria-pressed="true"]{background:#fff;color:var(--ground)}
+.tb svg{width:22px;height:22px}
+.tb .sz{background:currentColor;border-radius:50%}
+.chat{flex:1;min-height:56px;overflow-y:auto;background:var(--card);color:var(--card-ink);border-radius:16px;padding:8px 12px;display:flex;flex-direction:column;gap:3px;font-size:14px;line-height:1.45}
+.msg{overflow-wrap:anywhere}
+.msg b{font-weight:700;margin-right:6px}
+.msg.hit{color:var(--mint);font-weight:700}
+.msg.note{color:var(--card-soft);font-style:italic}
+.msg.empty{color:var(--card-soft)}
+.chatbar{display:flex;gap:6px;flex:none}
+.chatbar input{flex:1;min-width:0;font:inherit;font-size:16px;padding:12px 14px;border-radius:14px;border:0;background:var(--card);color:var(--card-ink)}
+.chatbar input::placeholder{color:var(--card-soft)}
+.chatbar button{flex:none;background:var(--sun);color:var(--sun-ink);font-weight:700;padding:0 16px;border-radius:14px}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.sheet .card{width:100%;max-width:520px}
+.ghost{padding:14px;border-radius:14px;background:var(--chip);font-weight:700;width:100%}
+.danger{padding:14px;border-radius:14px;background:var(--coral);color:#fff;font-weight:700;width:100%}
+/* end */
+.rank{display:flex;flex-direction:column;gap:8px}
+.rk{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:var(--chip)}
+.rk.first{background:var(--sun);color:var(--sun-ink)}
+.rk .pos{font-family:var(--display);font-size:22px;width:28px;text-align:center}
+.rk .nm{flex:1;font-weight:700;font-size:17px}
+.rk .pt{font-family:var(--display);font-size:22px;font-variant-numeric:tabular-nums}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--card-ink);color:var(--card);padding:10px 16px;border-radius:999px;font-size:14px;z-index:30;max-width:calc(100% - 32px);text-align:center}
+.spin{width:36px;height:36px;border-radius:50%;border:4px solid rgba(255,255,255,.25);border-top-color:var(--sun);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spin{animation:none}}
+@media (max-height:640px){.tb{height:34px}.sw{width:28px;height:28px}.word .box{height:26px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="bar" id="hdr">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 24c5-9 9 2 13-6s7-6 11-10" fill="none" stroke="#FFD23F" stroke-width="3.5" stroke-linecap="round"/><circle cx="27" cy="8" r="3" fill="#FFFFFF"/></svg>
+      우리집 그림퀴즈
+    </div>
+    <button id="meChip" class="me-chip" hidden></button>
+  </header>
+  <main>
+    <section id="sLoading" class="screen center">
+      <div class="spin" aria-hidden="true"></div>
+      <p class="soft" id="loadMsg">게임판을 불러오는 중이에요</p>
+    </section>
+
+    <section id="sNoDb" class="screen center" hidden>
+      <h2>아직 게임판이 연결되지 않았어요</h2>
+      <p class="soft">config.js에 Firebase 설정값을 넣어 주세요.</p>
+    </section>
+
+    <section id="sGate" class="screen center" hidden>
+      <h1>우리 가족 암호는?</h1>
+      <form id="gateForm" class="chatbar" style="width:100%;max-width:320px" autocomplete="off">
+        <input id="gateIn" type="password" placeholder="가족 암호" aria-label="가족 암호">
+        <button type="submit">입장</button>
+      </form>
+      <p class="soft" id="gateErr" hidden>암호가 달라요. 다시 입력해 주세요.</p>
+    </section>
+
+    <section id="sPick" class="screen" hidden>
+      <div style="display:flex;flex-direction:column;gap:6px;padding-top:12px">
+        <h1>이 기기는 누구 거예요?</h1>
+        <p class="soft">한 번 고르면 이 기기에서 계속 기억해요.</p>
+      </div>
+      <div class="pick-grid" id="pickGrid"></div>
+    </section>
+
+    <section id="sLobby" class="screen" hidden>
+      <div id="roNotice" class="notice" hidden>저장이 안 되고 있어요. 인터넷 연결을 확인해 주세요.</div>
+      <div class="card">
+        <div class="row"><span class="card-title">오늘 참가하는 사람</span><span class="card-title" id="joinCount"></span></div>
+        <div class="plist" id="plist"></div>
+      </div>
+      <div class="card">
+        <span class="card-title">라운드</span>
+        <div class="seg" id="segRounds"></div>
+        <span class="card-title">그리는 시간</span>
+        <div class="seg" id="segTime"></div>
+      </div>
+      <button class="big" id="startBtn">게임 시작</button>
+      <div class="card">
+        <span class="card-title">이렇게 해요</span>
+        <ol class="howto">
+          <li>차례가 되면 쉬운 단어 3개 중 하나를 골라 그려요.</li>
+          <li>나머지 사람은 아래 칸에 정답을 입력해요.</li>
+          <li>빨리 맞힐수록 점수가 커요. 그린 사람도 맞힌 사람마다 25점을 받아요.</li>
+          <li>시간이 반쯤 지나면 글자 힌트가 하나씩 나와요.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="sGame" class="screen" hidden>
+      <div class="top">
+        <span class="pill" id="roundPill">1/3</span>
+        <div class="word" id="wordArea"></div>
+        <span class="timer" id="timer">--</span>
+        <button class="menu-btn" id="menuBtn" aria-label="메뉴">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <div class="scores" id="scores"></div>
+      <div class="stage" id="stage">
+        <canvas id="cv" width="800" height="600" aria-label="그림판"></canvas>
+        <div class="ov" id="ovChoose" hidden>
+          <div class="t">무엇을 그릴까요?</div>
+          <div class="choices" id="choices"></div>
+          <div class="s" id="chooseLeft"></div>
+        </div>
+        <div class="ov" id="ovWait" hidden><div class="t" id="waitText"></div><div class="s" id="waitSub"></div></div>
+        <div class="ov" id="ovReveal" hidden>
+          <div class="s" id="revealLead">정답은</div>
+          <div class="reveal-word" id="revealWord"></div>
+          <div class="gains" id="gains"></div>
+        </div>
+      </div>
+      <div class="tools" id="tools" hidden>
+        <div class="swatches" id="swatches"></div>
+        <div class="toolrow" id="toolrow"></div>
+      </div>
+      <div class="chat" id="chat" aria-live="polite"></div>
+      <form class="chatbar" id="chatForm" autocomplete="off">
+        <input id="chatIn" maxlength="40" placeholder="정답을 입력해요" enterkeyhint="send">
+        <button type="submit" id="sendBtn">보내기</button>
+      </form>
+    </section>
+
+    <section id="sEnd" class="screen" hidden>
+      <div style="display:flex;flex-direction:column;gap:6px;padding-top:12px;text-align:center">
+        <h1 id="endTitle">게임 끝!</h1>
+        <p class="soft">수고했어요. 한 판 더 할까요?</p>
+      </div>
+      <div class="card"><div class="rank" id="rank"></div></div>
+      <button class="big" id="againBtn">다시 하기</button>
+    </section>
+  </main>
+  <div id="sheet" class="sheet" hidden>
+    <div class="card" id="sheetCard"></div>
+  </div>
+  <div id="toast" hidden></div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc as fdoc, collection as fcol, getDoc, setDoc, deleteDoc, addDoc, onSnapshot as fsnap, query as fquery, where as fwhere, orderBy as forder, limit as flimit, getDocs, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { FIREBASE_CONFIG, FAMILY_CODE } from './config.js';
+(() => {
+const PLAYERS = [
+  {id:'beomtaek', name:'범택', short:'택', color:'#F2772E'},
+  {id:'heejin',   name:'희진', short:'진', color:'#D94A8E'},
+  {id:'chaeeun',  name:'채은', short:'은', color:'#1F9E5F'},
+  {id:'chaehee',  name:'채희', short:'희', color:'#7C4DE8'},
+];
+const P = Object.fromEntries(PLAYERS.map(p => [p.id, p]));
+// 초등학생이 쉽게 그릴 수 있는, 눈에 보이는 물건과 동물 위주
+const WORDS = ['사과','바나나','수박','포도','딸기','당근','옥수수','버섯','고양이','강아지','토끼','코끼리','기린','사자','펭귄','거북이','문어','상어','고래','나비','달팽이','개구리','오리','돼지','병아리','원숭이','곰','물고기','뱀','게','공룡','로봇','비행기','기차','자동차','자전거','배','버스','로켓','집','학교','성','텐트','우산','모자','안경','신발','양말','장갑','가방','시계','왕관','칫솔','거울','침대','의자','냉장고','텔레비전','컴퓨터','휴대폰','전구','그네','미끄럼틀','풍선','연','공','피아노','기타','북','책','연필','가위','편지','선물','케이크','피자','햄버거','김밥','아이스크림','사탕','도넛','빵','계란','우유','치킨','눈사람','무지개','구름','번개','해','달','별','비','산','바다','섬','나무','꽃','선인장','해바라기','크리스마스트리','유령','눈','코','입','귀','손','발','이빨','하트','열쇠','사다리','양초','보물상자','지도','악어','벌','개미','무당벌레','새우','불가사리','트로피','줄넘기','눈썹','수염','돋보기','망치','숟가락','컵','냄비','빗자루','소화기','신호등','다리','달팽이','고슴도치','부엉이','닭','젖소','양','말','오징어','해파리','캥거루','팬더','얼음','불','화산','물방울','튤립','네잎클로버','바퀴','종','나뭇잎','도토리','당나귀','포크'];
+const W = 800, H = 600;
+const TAB = 'tab' + Math.random().toString(36).slice(2, 10);
+const COLORS = ['#1B1B1F','#7B7F8E','#E53935','#FF8F00','#FDD835','#43A047','#00ACC1','#1E5EFF','#8E24AA','#F06292','#8D5524','#FFCCA8'];
+const SIZES = [5, 12, 26];
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const store = {
+  get(k){ try { return localStorage.getItem('gq_' + k) } catch { return null } },
+  set(k, v){ try { v == null ? localStorage.removeItem('gq_' + k) : localStorage.setItem('gq_' + k, v) } catch {} },
+};
+const configured = FIREBASE_CONFIG && FIREBASE_CONFIG.projectId && !String(FIREBASE_CONFIG.projectId).includes('여기');
+let fs = null;
+function makeDb(){
+  fs = getFirestore(initializeApp(FIREBASE_CONFIG));
+  const wrap = s => ({ id: s.id, exists: s.exists(), data: () => s.data() });
+  const Q = (ref, cons = []) => ({
+    where: (f, o, v) => Q(ref, [...cons, fwhere(f, o, v)]),
+    orderBy: (f, d) => Q(ref, [...cons, forder(f, d || 'asc')]),
+    limit: n => Q(ref, [...cons, flimit(n)]),
+    get: async () => ({ docs: (await getDocs(fquery(ref, ...cons))).docs.map(wrap) }),
+    onSnapshot: (next, err) => fsnap(fquery(ref, ...cons), s => next({ docs: s.docs.map(wrap) }), err),
+    add: d => addDoc(ref, d),
+  });
+  const D = ref => ({
+    get: async () => wrap(await getDoc(ref)),
+    set: d => setDoc(ref, d),
+    delete: () => deleteDoc(ref),
+    onSnapshot: (next, err) => fsnap(ref, s => next(wrap(s)), err),
+  });
+  return { doc: p => D(fdoc(fs, p)), collection: p => Q(fcol(fs, p)) };
+}
+
+let db = null;
+let unlocked = !FAMILY_CODE || store.get('code') === FAMILY_CODE;
+let me = P[store.get('me')] ? store.get('me') : null;
+let state = null, stateLoaded = false, players = {}, chat = [], hits = [], strokes = [];
+let online = null; // Set of ids, or null when presence is unavailable
+let readOnly = false;
+const localNotes = [];
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2600);
+}
+function av(id, cls = ''){
+  const p = P[id]; if (!p) return '';
+  const dot = online && online.has(id) ? '<span class="dot"></span>' : '';
+  return `<span class="av ${cls}" style="background:${p.color}">${p.short}${dot}</span>`;
+}
+function writeFailed(e){
+  console.warn(e);
+  if (e && e.code === 'permission-denied') toast('저장이 거부됐어요. Firestore 규칙을 확인해 주세요');
+  else if (e && e.code === 'resource-exhausted') toast('오늘 무료 사용량을 다 썼어요');
+  else toast('저장하지 못했어요. 잠시 후 다시 해 주세요');
+}
+
+/* ---------- game helpers ---------- */
+const drawerOf = s => (s && s.order && s.order.length) ? s.order[s.turn % s.order.length] : null;
+const norm = s => String(s).replace(/\s+/g, '').toLowerCase();
+function shuffle(a, rnd = Math.random){ a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
+function hashStr(s){ let h = 2166136261; for (const ch of s) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) } return h >>> 0 }
+function seeded(seed){ return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296 } }
+function pickWords(n, used){
+  const pool = [...new Set(WORDS)];
+  let avail = pool.filter(w => !used.includes(w));
+  if (avail.length < n) avail = pool;
+  return shuffle(avail).slice(0, n);
+}
+function nearMiss(a, b){
+  a = [...norm(a)]; b = [...norm(b)];
+  if (b.length < 2) return false;
+  if (a.length === b.length) return a.filter((c, i) => c !== b[i]).length === 1;
+  if (Math.abs(a.length - b.length) !== 1) return false;
+  const [s, l] = a.length < b.length ? [a, b] : [b, a];
+  for (let i = 0; i < l.length; i++) { const t = l.slice(0, i).concat(l.slice(i + 1)); if (t.join('') === s.join('')) return true }
+  return false;
+}
+function liveScore(id){
+  let v = (state && state.scores && state.scores[id]) || 0;
+  if (state && state.phase === 'drawing') {
+    const dr = drawerOf(state);
+    for (const h of hits) if (h.by === id && id !== dr) v += h.pts || 0;
+    if (id === dr) v += 25 * hits.filter(h => h.by !== dr).length;
+  }
+  return v;
+}
+
+/* ---------- state transitions (guarded by a short lease) ---------- */
+async function transact(check, build){
+  if (!db) return false;
+  try {
+    return await runTransaction(fs, async tx => {
+      const ref = fdoc(fs, 'game/state');
+      const s = await tx.get(ref);
+      const cur = s.exists() ? s.data() : null;
+      if (!check(cur)) return false;
+      const next = await build(cur);
+      if (!next) return false;
+      tx.set(ref, next);
+      return true;
+    });
+  } catch (e) { writeFailed(e); return false }
+}
+function turnFields(base, turn, now){
+  return { turn, turnId: base.gameId + '-' + turn, phase: 'choosing', choices: pickWords(3, base.used || []), word: '', deadline: now + 15000, drawStart: 0 };
+}
+async function startGame(){
+  const joined = PLAYERS.filter(p => players[p.id] && players[p.id].joined).map(p => p.id);
+  if (joined.length < 2) return toast('2명 이상 참가해야 시작할 수 있어요');
+  const ok = await transact(cur => !cur || cur.phase === 'lobby' || cur.phase === 'end', cur => {
+    const now = Date.now();
+    const base = { rounds: (cur && cur.rounds) || 3, time: (cur && cur.time) || 80, order: shuffle(joined),
+      gameId: 'g' + now.toString(36), used: [], scores: Object.fromEntries(joined.map(id => [id, 0])), last: null };
+    return { ...base, ...turnFields(base, 0, now) };
+  });
+  if (ok) purge(() => false);
+}
+async function chooseWord(w){
+  const tid = state.turnId;
+  const ok = await transact(c => c && c.phase === 'choosing' && c.turnId === tid && (c.choices || []).includes(w), c => {
+    const now = Date.now();
+    return { ...c, phase: 'drawing', word: w, used: [...(c.used || []), w], drawStart: now, deadline: now + c.time * 1000 };
+  });
+  const gid = tid.split('-')[0];
+  if (ok) purge(d => d._c === 'chat' || (d._c === 'hits' && String(d.turn || '').startsWith(gid + '-')) || (d._c === 'strokes' && d.turn === tid));
+}
+async function endTurn(tid){
+  return transact(c => c && c.turnId === tid && (c.phase === 'drawing' || c.phase === 'choosing'), async c => {
+    const dr = drawerOf(c), pts = {};
+    let n = 0;
+    if (c.phase === 'drawing') {
+      const q = await db.collection('hits').where('turn', '==', tid).get();
+      for (const d of q.docs) { const h = d.data(); if (h.by !== dr && c.order.includes(h.by) && pts[h.by] == null) { pts[h.by] = Math.max(0, Math.min(200, h.pts | 0)); n++ } }
+      if (n) pts[dr] = 25 * n;
+    }
+    const scores = { ...c.scores };
+    for (const id in pts) scores[id] = (scores[id] || 0) + pts[id];
+    return { ...c, phase: 'reveal', deadline: Date.now() + 6000, scores,
+      last: { word: c.word, drawer: dr, pts, skipped: c.phase === 'choosing' } };
+  });
+}
+async function nextTurn(tid){
+  return transact(c => c && c.phase === 'reveal' && c.turnId === tid, c => {
+    const t = c.turn + 1;
+    if (t >= c.order.length * c.rounds) return { ...c, phase: 'end', deadline: 0 };
+    return { ...c, ...turnFields(c, t, Date.now()) };
+  });
+}
+async function toLobby(){
+  return transact(() => true, c => ({ phase: 'lobby', rounds: (c && c.rounds) || 3, time: (c && c.time) || 80 }));
+}
+async function setSetting(k, v){
+  return transact(c => !c || c.phase === 'lobby', c => ({ ...(c || { phase: 'lobby', rounds: 3, time: 80 }), [k]: v }));
+}
+// Delete old drawings, guesses and chat. keep(doc) returns true for docs to keep.
+let purging = false;
+async function purge(keep){
+  if (purging || !db) return; purging = true;
+  try {
+    for (const coll of ['strokes', 'hits', 'chat']) {
+      const q = await db.collection(coll).get();
+      for (const d of q.docs) {
+        const data = { ...d.data(), _c: coll };
+        if (keep(data)) continue;
+        try { await db.doc(coll + '/' + d.id).delete() } catch {}
+      }
+    }
+  } catch (e) { console.warn(e) } finally { purging = false }
+}
+
+/* ---------- chat & guesses ---------- */
+async function send(){
+  const inp = $('#chatIn');
+  const text = inp.value.trim().slice(0, 40);
+  if (!text || !db || !me) return;
+  inp.value = '';
+  const s = state, dr = drawerOf(s);
+  const inGame = s && s.phase === 'drawing' && s.order.includes(me);
+  if (inGame && me === dr && norm(s.word) && norm(text).includes(norm(s.word))) { note('정답은 말로 알려줄 수 없어요'); return }
+  const hitAlready = hits.some(h => h.by === me);
+  if (inGame && me !== dr && !hitAlready && Date.now() < s.deadline) {
+    if (norm(text) === norm(s.word)) {
+      const total = s.time * 1000, left = Math.max(0, s.deadline - Date.now());
+      const pts = 50 + Math.round(50 * left / total) + (hits.length === 0 ? 20 : 0);
+      try {
+        await db.doc('hits/' + s.turnId + '_' + me).set({ turn: s.turnId, by: me, pts, at: Date.now() });
+        await db.collection('chat').add({ by: me, kind: 'hit', text: '', t: Date.now() });
+      } catch (e) { writeFailed(e) }
+      return;
+    }
+    if (nearMiss(text, s.word)) setTimeout(() => note('아깝다! 거의 맞았어요'), 300);
+  }
+  if (inGame && hitAlready && norm(text).includes(norm(s.word))) { note('정답은 비밀로 해 주세요'); return }
+  try { await db.collection('chat').add({ by: me, kind: 'msg', text, t: Date.now() }) }
+  catch (e) { writeFailed(e) }
+}
+function note(text){ localNotes.push({ t: Date.now(), kind: 'note', text }); renderChat() }
+
+/* ---------- canvas ---------- */
+const cv = $('#cv'), vctx = cv.getContext('2d', { willReadFrequently: true });
+const base = document.createElement('canvas'); base.width = W; base.height = H;
+const bctx = base.getContext('2d', { willReadFrequently: true });
+let baked = [];               // keys of strokes already painted on `base`
+const live = new Map();       // my strokes not yet confirmed by the store
+const gone = new Set();       // ids I undid
+let myN = 0, drawPending = false;
+let tool = 'pen', color = COLORS[0], size = SIZES[1];
+
+const keyOf = s => s.id + '|' + (s.p ? s.p.length : 0) + '|' + (s.done ? 1 : 0);
+function strokeList(){
+  const m = new Map();
+  for (const s of strokes) if (!gone.has(s.id)) m.set(s.id, s);
+  for (const [id, s] of live) if (!gone.has(id)) m.set(id, s);
+  return [...m.values()].sort((a, b) => a.n - b.n);
+}
+function requestDraw(){ if (!drawPending) { drawPending = true; requestAnimationFrame(redraw) } }
+function blank(ctx){ ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, H) }
+function redraw(){
+  drawPending = false;
+  const list = strokeList();
+  let ok = baked.length <= list.length;
+  for (let i = 0; ok && i < baked.length; i++) if (baked[i] !== keyOf(list[i])) ok = false;
+  if (!ok) { blank(bctx); baked = [] }
+  if (!baked.length) blank(bctx);
+  while (baked.length < list.length && list[baked.length].done) { paint(bctx, list[baked.length]); baked.push(keyOf(list[baked.length])) }
+  vctx.drawImage(base, 0, 0);
+  for (let i = baked.length; i < list.length; i++) paint(vctx, list[i]);
+}
+function paint(ctx, s){
+  if (s.k === 'clear') { blank(ctx); return }
+  const p = s.p || [];
+  if (s.k === 'fill') { if (p.length >= 2) flood(ctx, p[0], p[1], s.c); return }
+  if (p.length < 2) return;
+  ctx.strokeStyle = s.c; ctx.fillStyle = s.c; ctx.lineWidth = s.w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (p.length === 2) { ctx.beginPath(); ctx.arc(p[0], p[1], s.w / 2, 0, Math.PI * 2); ctx.fill(); return }
+  ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+  for (let i = 2; i < p.length - 2; i += 2) {
+    const mx = (p[i] + p[i + 2]) / 2, my = (p[i + 1] + p[i + 3]) / 2;
+    ctx.quadraticCurveTo(p[i], p[i + 1], mx, my);
+  }
+  ctx.lineTo(p[p.length - 2], p[p.length - 1]);
+  ctx.stroke();
+}
+function hexRgb(h){ const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255] }
+function flood(ctx, x0, y0, hex){
+  x0 = Math.round(x0); y0 = Math.round(y0);
+  if (x0 < 0 || y0 < 0 || x0 >= W || y0 >= H) return;
+  const img = ctx.getImageData(0, 0, W, H), d = img.data;
+  const i0 = (y0 * W + x0) * 4, tr = d[i0], tg = d[i0 + 1], tb = d[i0 + 2];
+  const [fr, fg, fb] = hexRgb(hex);
+  if (Math.abs(tr - fr) + Math.abs(tg - fg) + Math.abs(tb - fb) < 12) return;
+  const tol = 110, seen = new Uint8Array(W * H), stack = [x0, y0];
+  const match = i => Math.abs(d[i] - tr) + Math.abs(d[i + 1] - tg) + Math.abs(d[i + 2] - tb) <= tol;
+  while (stack.length) {
+    const y = stack.pop(); let x = stack.pop();
+    while (x > 0 && !seen[y * W + x - 1] && match((y * W + x - 1) * 4)) x--;
+    let up = false, dn = false;
+    for (; x < W; x++) {
+      const k = y * W + x;
+      if (seen[k] || !match(k * 4)) break;
+      seen[k] = 1; const i = k * 4; d[i] = fr; d[i + 1] = fg; d[i + 2] = fb; d[i + 3] = 255;
+      if (y > 0) { const u = k - W; const m = !seen[u] && match(u * 4); if (m && !up) { stack.push(x, y - 1); up = true } else if (!m) up = false }
+      if (y < H - 1) { const u = k + W; const m = !seen[u] && match(u * 4); if (m && !dn) { stack.push(x, y + 1); dn = true } else if (!m) dn = false }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function canDraw(){ return state && state.phase === 'drawing' && drawerOf(state) === me && Date.now() < state.deadline && !readOnly }
+function newStroke(k, extra){
+  const list = strokeList();
+  const n = Math.max(myN, list.length ? list[list.length - 1].n + 1 : 0); myN = n + 1;
+  const s = { id: state.turnId + '_' + String(n).padStart(4, '0'), turn: state.turnId, n, k, c: color, w: size, p: [], done: false, ...extra };
+  live.set(s.id, s);
+  return s;
+}
+async function flush(s){
+  if (s.writing) { s.dirty = true; return }
+  s.writing = true;
+  try {
+    do { s.dirty = false; await db.doc('strokes/' + s.id).set({ turn: s.turn, n: s.n, k: s.k, c: s.c, w: s.w, p: s.p.slice(), done: s.done }) } while (s.dirty);
+  } catch (e) { writeFailed(e) } finally { s.writing = false }
+}
+let cur = null, flushT = null;
+function pt(e){ const r = cv.getBoundingClientRect(); return [Math.round((e.clientX - r.left) / r.width * W), Math.round((e.clientY - r.top) / r.height * H)] }
+cv.addEventListener('pointerdown', e => {
+  if (!canDraw() || !e.isPrimary) return;
+  e.preventDefault();
+  const [x, y] = pt(e);
+  if (tool === 'fill') { const s = newStroke('fill', { p: [x, y], done: true }); requestDraw(); flush(s); return }
+  cv.setPointerCapture(e.pointerId);
+  cur = newStroke('line', { c: tool === 'eraser' ? '#FFFFFF' : color, w: tool === 'eraser' ? size * 1.8 : size, p: [x, y] });
+  requestDraw(); flush(cur);
+});
+cv.addEventListener('pointermove', e => {
+  if (!cur || !e.isPrimary) return;
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  for (const ev of evs) {
+    const [x, y] = pt(ev), p = cur.p;
+    if (Math.hypot(x - p[p.length - 2], y - p[p.length - 1]) >= 2) p.push(x, y);
+  }
+  requestDraw();
+  if (!flushT) flushT = setTimeout(() => { flushT = null; if (cur) flush(cur) }, 90);
+});
+function endStroke(){ if (!cur) return; cur.done = true; const s = cur; cur = null; requestDraw(); flush(s) }
+cv.addEventListener('pointerup', endStroke);
+cv.addEventListener('pointercancel', endStroke);
+function undo(){
+  if (!canDraw()) return;
+  const list = strokeList(); const s = list[list.length - 1]; if (!s) return;
+  gone.add(s.id); live.delete(s.id); requestDraw();
+  db.doc('strokes/' + s.id).delete().catch(writeFailed);
+}
+function clearAll(){ if (!canDraw()) return; const s = newStroke('clear', { done: true }); requestDraw(); flush(s) }
+
+/* ---------- subscriptions ---------- */
+let subTid = null, unsubS = null, unsubH = null;
+function subTurn(tid){
+  if (subTid === tid) return;
+  subTid = tid;
+  if (unsubS) unsubS(); if (unsubH) unsubH();
+  unsubS = unsubH = null;
+  strokes = []; hits = []; live.clear(); gone.clear(); baked = []; myN = 0; cur = null; requestDraw();
+  if (!tid || !db) return;
+  unsubS = db.collection('strokes').where('turn', '==', tid).onSnapshot(q => {
+    strokes = q.docs.map(d => ({ id: d.id, ...d.data() }));
+    const ids = new Set(strokes.map(s => s.id));
+    for (const id of [...gone]) if (!ids.has(id)) gone.delete(id);
+    for (const [id, s] of live) {
+      const r = strokes.find(x => x.id === id);
+      if (s.done && !s.writing && !s.dirty && r && r.done && (r.p || []).length === s.p.length) live.delete(id);
+    }
+    requestDraw();
+  }, e => console.warn(e));
+  unsubH = db.collection('hits').where('turn', '==', tid).onSnapshot(q => {
+    hits = q.docs.map(d => d.data()).filter(h => state && state.order && state.order.includes(h.by));
+    renderGame();
+  }, e => console.warn(e));
+}
+
+/* ---------- timers & automatic progress ---------- */
+let attempt = { key: '', at: 0 };
+function tryOnce(key, fn){ const now = Date.now(); if (attempt.key === key && now - attempt.at < 3000) return; attempt = { key, at: now }; fn() }
+function tick(){
+  const s = state;
+  if (!s || !me || readOnly) { updateTimer(); return }
+  const now = Date.now(), dr = drawerOf(s), mine = dr === me;
+  const grace = mine ? 0 : 6000;
+  if (s.phase === 'choosing') {
+    if (mine && now >= s.deadline) tryOnce('pick' + s.turnId, () => chooseWord(s.choices[0]));
+    else if (!mine && now >= s.deadline + grace) tryOnce('skip' + s.turnId, () => endTurn(s.turnId));
+  } else if (s.phase === 'drawing') {
+    const need = s.order.filter(id => id !== dr).length;
+    const got = new Set(hits.filter(h => h.by !== dr).map(h => h.by)).size;
+    if ((mine && (now >= s.deadline || got >= need)) || (!mine && now >= s.deadline + grace)) {
+      if (cur) endStroke();
+      tryOnce('end' + s.turnId, () => endTurn(s.turnId));
+    }
+  } else if (s.phase === 'reveal') {
+    if (now >= s.deadline + grace) tryOnce('next' + s.turnId, () => nextTurn(s.turnId));
+  }
+  updateTimer();
+}
+setInterval(tick, 250);
+function updateTimer(){
+  const s = state, el = $('#timer');
+  if (!s || !['choosing', 'drawing', 'reveal'].includes(s.phase)) return;
+  const left = Math.max(0, Math.ceil((s.deadline - Date.now()) / 1000));
+  el.textContent = left;
+  el.classList.toggle('hurry', s.phase === 'drawing' && left <= 10);
+  if (s.phase === 'choosing') { const c = $('#chooseLeft'); if (c) c.textContent = left + '초 안에 고르지 않으면 첫 번째 단어로 정해져요' }
+  if (s.phase === 'drawing') renderWord();
+  $('#stage').classList.toggle('can-draw', canDraw());
+}
+
+/* ---------- rendering ---------- */
+function show(id){ for (const sc of document.querySelectorAll('main > .screen')) sc.hidden = sc.id !== id; $('#hdr').hidden = id === 'sGame' }
+function render(){
+  if (!db) { if (stateLoaded) show('sNoDb'); return }
+  if (!stateLoaded) { show('sLoading'); return }
+  const chip = $('#meChip');
+  chip.hidden = !me;
+  if (me) chip.innerHTML = `${av(me, 'sm')}<span>${esc(P[me].name)}</span><span style="opacity:.7">· 바꾸기</span>`;
+  if (!me) { renderPick(); show('sPick'); return }
+  const ph = state ? state.phase : 'lobby';
+  if (ph === 'choosing' || ph === 'drawing' || ph === 'reveal') { show('sGame'); renderGame(); return }
+  if (ph === 'end') { renderEnd(); show('sEnd'); return }
+  renderLobby(); show('sLobby');
+}
+function renderPick(){
+  $('#pickGrid').innerHTML = PLAYERS.map(p => `<button class="pick" data-pick="${p.id}">${av(p.id, 'lg')}${esc(p.name)}</button>`).join('');
+}
+function renderLobby(){
+  $('#roNotice').hidden = !readOnly;
+  const joined = PLAYERS.filter(p => players[p.id] && players[p.id].joined);
+  $('#joinCount').textContent = joined.length + '명';
+  $('#plist').innerHTML = PLAYERS.map(p => {
+    const on = players[p.id] && players[p.id].joined;
+    const st = on ? '참가' : (online && online.has(p.id) ? '접속 중 · 눌러서 참가' : '눌러서 참가');
+    return `<button class="pcard ${on ? 'on' : ''}" data-join="${p.id}" aria-pressed="${on ? 'true' : 'false'}">${av(p.id)}<span style="min-width:0"><div class="nm">${esc(p.name)}${p.id === me ? ' (나)' : ''}</div><div class="st">${st}</div></span></button>`;
+  }).join('');
+  const r = (state && state.rounds) || 3, t = (state && state.time) || 80;
+  $('#segRounds').innerHTML = [2, 3, 4].map(v => `<button data-rounds="${v}" aria-pressed="${v === r}">${v}라운드</button>`).join('');
+  $('#segTime').innerHTML = [60, 80, 100].map(v => `<button data-time="${v}" aria-pressed="${v === t}">${v}초</button>`).join('');
+  const b = $('#startBtn');
+  b.disabled = joined.length < 2 || readOnly;
+  b.textContent = joined.length < 2 ? '2명 이상 참가하면 시작할 수 있어요' : `${joined.length}명이서 게임 시작`;
+}
+function renderWord(){
+  const s = state, el = $('#wordArea'), dr = drawerOf(s);
+  if (!s) return;
+  if (s.phase === 'choosing') { el.innerHTML = `<span class="lbl">${esc(P[dr] ? P[dr].name : '')} 차례</span>`; return }
+  if (s.phase === 'reveal') { el.innerHTML = `<span class="full">${esc(s.last && !s.last.skipped ? s.last.word : '')}</span>`; return }
+  const chars = [...s.word];
+  const showAll = dr === me || hits.some(h => h.by === me) || !s.order.includes(me);
+  let html;
+  if (showAll) html = `<span class="full">${esc(s.word)}</span>`;
+  else {
+    const total = s.time * 1000, el2 = Date.now() - s.drawStart;
+    let k = el2 >= total * 0.5 ? 1 : 0; if (el2 >= total * 0.75 && chars.length >= 4) k = 2;
+    k = Math.min(k, chars.length - 1);
+    const order = shuffle(chars.map((_, i) => i), seeded(hashStr(s.turnId)));
+    const open = new Set(order.slice(0, k));
+    html = chars.map((c, i) => `<span class="box">${open.has(i) ? esc(c) : ''}</span>`).join('') + `<span class="lbl">&nbsp;${chars.length}글자</span>`;
+  }
+  if (el._h !== html) { el.innerHTML = html; el._h = html }
+}
+function renderGame(){
+  const s = state; if (!s || !s.order) return;
+  subTurn(s.turnId);
+  const dr = drawerOf(s), mine = dr === me, player = s.order.includes(me);
+  const round = Math.floor(s.turn / s.order.length) + 1;
+  $('#roundPill').textContent = `${Math.min(round, s.rounds)}/${s.rounds}라운드`;
+  renderWord();
+  const hitSet = new Set(hits.map(h => h.by));
+  $('#scores').style.gridTemplateColumns = `repeat(${s.order.length},minmax(0,1fr))`;
+  $('#scores').innerHTML = s.order.map(id => {
+    const cls = [id === dr && s.phase !== 'reveal' ? 'drawer' : '', s.phase === 'drawing' && hitSet.has(id) ? 'hit' : '', online && !online.has(id) ? 'off' : ''].join(' ');
+    return `<div class="sc ${cls}">${av(id, 'sm')}<span class="meta"><span class="nm">${esc(P[id].name)}${id === dr && s.phase !== 'reveal' ? ' ✎' : ''}</span><span class="pt">${liveScore(id)}</span></span></div>`;
+  }).join('');
+  // overlays
+  const ovC = $('#ovChoose'), ovW = $('#ovWait'), ovR = $('#ovReveal');
+  ovC.hidden = !(s.phase === 'choosing' && mine);
+  ovW.hidden = !(s.phase === 'choosing' && !mine);
+  ovR.hidden = s.phase !== 'reveal';
+  if (!ovC.hidden) {
+    const html = (s.choices || []).map(w => `<button data-choose="${esc(w)}">${esc(w)}</button>`).join('');
+    if ($('#choices')._h !== html) { $('#choices').innerHTML = html; $('#choices')._h = html }
+  }
+  if (!ovW.hidden) { $('#waitText').textContent = `${P[dr].name}님이 그릴 단어를 고르고 있어요`; $('#waitSub').textContent = `${round}라운드 · 잠시만 기다려요` }
+  if (!ovR.hidden && s.last) {
+    const L = s.last;
+    $('#revealLead').textContent = L.skipped ? `${P[L.drawer] ? P[L.drawer].name : ''}님 차례를 건너뛰었어요` : '정답은';
+    $('#revealWord').textContent = L.skipped ? '' : L.word;
+    const g = Object.entries(L.pts || {}).sort((a, b) => b[1] - a[1]);
+    $('#gains').innerHTML = g.length ? g.map(([id, v]) => `<span class="gain">${av(id, 'sm')}${esc(P[id] ? P[id].name : '')} +${v}</span>`).join('') : (L.skipped ? '' : '<span class="s">아무도 못 맞혔어요</span>');
+  }
+  $('#tools').hidden = !(mine && s.phase === 'drawing');
+  const inp = $('#chatIn'), canGuess = player && s.phase === 'drawing' && !mine && !hitSet.has(me);
+  inp.placeholder = readOnly ? '보기 전용이에요' : mine && s.phase === 'drawing' ? '그리는 중이에요. 응원 메시지는 보낼 수 있어요' : hitSet.has(me) && s.phase === 'drawing' ? '정답! 다른 사람을 기다려요' : canGuess ? '정답을 입력해요' : '메시지를 입력해요';
+  inp.disabled = readOnly; $('#sendBtn').disabled = readOnly;
+  updateTimer();
+  renderChat();
+}
+function renderChat(){
+  const el = $('#chat'); if (!el || $('#sGame').hidden) return;
+  const items = chat.slice().reverse().concat(localNotes.filter(n => Date.now() - n.t < 60000)).sort((a, b) => a.t - b.t).slice(-60);
+  const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  el.innerHTML = items.length ? items.map(m => {
+    if (m.kind === 'note') return `<div class="msg note">${esc(m.text)}</div>`;
+    const p = P[m.by]; if (!p) return '';
+    if (m.kind === 'hit') return `<div class="msg hit">✓ ${esc(p.name)}님이 정답을 맞혔어요!</div>`;
+    return `<div class="msg"><b style="color:${p.color}">${esc(p.name)}</b>${esc(m.text)}</div>`;
+  }).join('') : '<div class="msg empty">정답이나 응원을 여기에 적어요</div>';
+  if (atBottom || items.length < 8) el.scrollTop = el.scrollHeight;
+}
+function renderEnd(){
+  const s = state, sc = (s && s.scores) || {};
+  const ids = Object.keys(sc).filter(id => P[id]).sort((a, b) => sc[b] - sc[a]);
+  let pos = 0, prev = null;
+  $('#rank').innerHTML = ids.map((id, i) => { if (sc[id] !== prev) { pos = i + 1; prev = sc[id] } return `<div class="rk ${pos === 1 ? 'first' : ''}"><span class="pos">${pos}</span>${av(id)}<span class="nm">${esc(P[id].name)}</span><span class="pt">${sc[id]}</span></div>` }).join('');
+  const top = ids.filter(id => sc[id] === sc[ids[0]]);
+  $('#endTitle').textContent = top.length === 1 ? `${P[top[0]].name} 우승!` : top.map(id => P[id].name).join(', ') + ' 공동 우승!';
+  $('#againBtn').disabled = readOnly;
+}
+
+/* ---------- tools ---------- */
+const ICON = {
+  pen: '<svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.6L15.8 4.8a2 2 0 012.8 0l.6.6a2 2 0 010 2.8L8.6 18.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+  fill: '<svg viewBox="0 0 24 24"><path d="M10 3l8 8-6.5 6.5a2 2 0 01-2.8 0L3.5 12.3a2 2 0 010-2.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M4 11h14" stroke="currentColor" stroke-width="2"/><path d="M20 14c1.2 1.8 1.8 3 1.8 3.8a1.8 1.8 0 01-3.6 0c0-.8.6-2 1.8-3.8z" fill="currentColor"/></svg>',
+  eraser: '<svg viewBox="0 0 24 24"><path d="M8.5 20H20M3.6 14.6l9-9a2 2 0 012.8 0l3 3a2 2 0 010 2.8L11 18.8a2 2 0 01-1.4.6H7.4a2 2 0 01-1.4-.6l-2.4-2.4a2 2 0 010-2.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 10l6 6" stroke="currentColor" stroke-width="2"/></svg>',
+  undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h11a5 5 0 010 10h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  clear: '<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+};
+function renderTools(){
+  $('#swatches').innerHTML = COLORS.map(c => `<button class="sw" style="background:${c}" data-color="${c}" aria-label="색 ${c}" aria-pressed="${c === color && tool !== 'eraser'}"></button>`).join('');
+  $('#toolrow').innerHTML =
+    SIZES.map((v, i) => `<button class="tb" data-size="${v}" aria-label="굵기 ${i + 1}" aria-pressed="${v === size}"><span class="sz" style="width:${6 + i * 6}px;height:${6 + i * 6}px"></span></button>`).join('') +
+    `<button class="tb" data-tool="pen" aria-label="펜" aria-pressed="${tool === 'pen'}">${ICON.pen}</button>` +
+    `<button class="tb" data-tool="fill" aria-label="채우기" aria-pressed="${tool === 'fill'}">${ICON.fill}</button>` +
+    `<button class="tb" data-tool="eraser" aria-label="지우개" aria-pressed="${tool === 'eraser'}">${ICON.eraser}</button>` +
+    `<button class="tb" data-act="undo" aria-label="되돌리기">${ICON.undo}</button>` +
+    `<button class="tb" data-act="clear" aria-label="전체 지우기">${ICON.clear}</button>`;
+}
+renderTools();
+
+/* ---------- events ---------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const d = b.dataset;
+  if (d.pick) {
+    me = d.pick; store.set('me', me);
+    beat();
+    if (db && (!state || state.phase === 'lobby') && !(players[me] && players[me].joined)) db.doc('players/' + me).set({ joined: true, at: Date.now() }).catch(writeFailed);
+    render(); return;
+  }
+  if (b.id === 'meChip') { me = null; store.set('me', null); render(); return }
+  if (d.join) { if (readOnly) return; const on = !(players[d.join] && players[d.join].joined); players[d.join] = { joined: on }; renderLobby(); db.doc('players/' + d.join).set({ joined: on, at: Date.now() }).catch(writeFailed); return }
+  if (d.rounds) { setSetting('rounds', +d.rounds); return }
+  if (d.time) { setSetting('time', +d.time); return }
+  if (b.id === 'startBtn') { b.disabled = true; startGame().finally(() => render()); return }
+  if (b.id === 'againBtn') { toLobby(); return }
+  if (d.choose) { b.disabled = true; chooseWord(d.choose); return }
+  if (d.color) { color = d.color; if (tool === 'eraser') tool = 'pen'; renderTools(); return }
+  if (d.size) { size = +d.size; renderTools(); return }
+  if (d.tool) { tool = d.tool; renderTools(); return }
+  if (d.act === 'undo') { undo(); return }
+  if (d.act === 'clear') { clearAll(); return }
+  if (b.id === 'menuBtn') { openSheet(); return }
+  if (d.sheet === 'close') { $('#sheet').hidden = true; return }
+  if (d.sheet === 'stop') { $('#sheet').hidden = true; toLobby(); return }
+});
+$('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') $('#sheet').hidden = true });
+function openSheet(){
+  $('#sheetCard').innerHTML = `<span class="card-title">게임 메뉴</span>
+    <p style="margin:0;font-size:14px;line-height:1.6;color:var(--card-soft)">게임을 끝내면 모두 대기실로 돌아가고 점수는 사라져요.</p>
+    <button class="danger" data-sheet="stop" ${readOnly ? 'disabled' : ''}>게임 끝내고 대기실로</button>
+    <button class="ghost" data-sheet="close">계속하기</button>`;
+  $('#sheet').hidden = false;
+}
+$('#chatForm').addEventListener('submit', e => { e.preventDefault(); send() });
+$('#chatIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!e.isComposing && e.keyCode !== 229) send() } });
+
+/* ---------- boot ---------- */
+let beatT = null;
+function beat(){
+  clearTimeout(beatT);
+  if (db && me) db.doc('presence/' + me).set({ at: Date.now() }).catch(() => {});
+  beatT = setTimeout(beat, 20000);
+}
+let presenceDocs = {};
+function recomputeOnline(){
+  const now = Date.now(), s = new Set();
+  for (const id in presenceDocs) if (now - (presenceDocs[id].at || 0) < 50000) s.add(id);
+  if (me) s.add(me);
+  online = s;
+}
+function boot(){
+  if (!unlocked) { showGate(); return }
+  if (!configured) { stateLoaded = true; render(); return }
+  render();
+  const loadTimer = setTimeout(() => { $('#loadMsg').textContent = '연결이 늦어지고 있어요. 인터넷 연결을 확인해 주세요' }, 10000);
+  try { db = makeDb() } catch (e) { console.warn(e); clearTimeout(loadTimer); stateLoaded = true; render(); return }
+  db.doc('game/state').onSnapshot(s => {
+    clearTimeout(loadTimer);
+    const prevPhase = state && state.phase;
+    state = s.exists ? s.data() : null; stateLoaded = true;
+    if (state && state.phase === 'drawing' && prevPhase !== 'drawing' && drawerOf(state) === me) { tool = 'pen'; renderTools() }
+    render();
+  }, e => { console.warn(e); clearTimeout(loadTimer); $('#loadMsg').textContent = '게임판을 열지 못했어요. Firestore 규칙을 확인해 주세요' });
+  db.collection('players').onSnapshot(q => { players = {}; for (const d of q.docs) players[d.id] = d.data(); render() }, e => console.warn(e));
+  db.collection('chat').orderBy('t', 'desc').limit(60).onSnapshot(q => { chat = q.docs.map(d => d.data()); renderChat() }, e => console.warn(e));
+  db.collection('presence').onSnapshot(q => { presenceDocs = {}; for (const d of q.docs) presenceDocs[d.id] = d.data(); recomputeOnline(); render() }, e => console.warn(e));
+  setInterval(() => { recomputeOnline() }, 15000);
+  beat();
+}
+function showGate(){
+  show('sGate');
+  const f = $('#gateForm');
+  f.onsubmit = e => {
+    e.preventDefault();
+    if ($('#gateIn').value.trim() === FAMILY_CODE) { store.set('code', FAMILY_CODE); unlocked = true; boot() }
+    else { $('#gateErr').hidden = false; $('#gateIn').value = '' }
+  };
+}
+boot();
+})();
+</script>
+</body>
+</html>
