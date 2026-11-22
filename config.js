@@ -8,4 +8,4 @@ export const FIREBASE_CONFIG = {
   appId: "1:1055078456302:web:97bf540746ab019df50cff",
 };
 // 가족 암호. 비워 두면 ("") 암호 없이 바로 입장해요.
-export const FAMILY_CODE = "";
+export const FAMILY_CODE = "1124";
