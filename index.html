@@ -35,7 +35,7 @@ body{margin:0;font-size:14px}
 [hidden]{display:none!important}
 body{background:var(--ground);color:var(--on-ground);font-family:var(--body);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
-  -webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none;word-break:keep-all}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 button:disabled{opacity:.45;cursor:default}
@@ -56,6 +56,9 @@ h2{font-size:20px}
 .av.lg{width:56px;height:56px;font-size:26px}
 .dot{position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;background:var(--mint);border:2px solid var(--card)}
 /* pick */
+.field{font:inherit;font-size:16px;padding:12px 14px;border-radius:12px;border:2px solid var(--line);background:var(--chip);color:var(--card-ink);width:100%}
+.field:focus{border-color:var(--ground);outline:none}
+.err{margin:0;color:var(--coral);font-size:14px;font-weight:700}
 .pick-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .pick{background:var(--card);color:var(--card-ink);border-radius:20px;padding:20px 12px;display:flex;flex-direction:column;align-items:center;gap:10px;font-family:var(--display);font-size:22px;box-shadow:0 4px 0 var(--ground-deep)}
 .pick:active{transform:translateY(2px);box-shadow:0 2px 0 var(--ground-deep)}
@@ -67,6 +70,7 @@ h2{font-size:20px}
 .pcard.on{border-color:var(--mint)}
 .pcard .nm{font-weight:700;font-size:15px}
 .pcard .st{font-size:12px;color:var(--card-soft)}
+.pcard.away{opacity:.6}
 .pcard.on .st{color:var(--mint);font-weight:700}
 .seg{display:flex;gap:6px;flex-wrap:wrap}
 .seg button{flex:1;min-width:64px;padding:10px 8px;border-radius:12px;background:var(--chip);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
@@ -95,6 +99,8 @@ h2{font-size:20px}
 .menu-btn{flex:none;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);display:grid;place-items:center}
 .scores{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .sc{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border-radius:12px;padding:5px 6px;min-width:0;border:2px solid transparent}
+.scores.many .sc .av{display:none}
+.scores.many .sc{border-left:5px solid var(--pc);padding-left:6px}
 .sc.drawer{background:var(--sun);color:var(--sun-ink)}
 .sc.hit{border-color:var(--mint)}
 .sc.off{opacity:.55}
@@ -170,21 +176,22 @@ h2{font-size:20px}
       <p class="soft">config.js에 Firebase 설정값을 넣어 주세요.</p>
     </section>
 
-    <section id="sGate" class="screen center" hidden>
-      <h1>우리 가족 암호는?</h1>
-      <form id="gateForm" class="chatbar" style="width:100%;max-width:320px" autocomplete="off">
-        <input id="gateIn" type="password" placeholder="가족 암호" aria-label="가족 암호">
-        <button type="submit">입장</button>
-      </form>
-      <p class="soft" id="gateErr" hidden>암호가 달라요. 다시 입력해 주세요.</p>
-    </section>
-
     <section id="sPick" class="screen" hidden>
       <div style="display:flex;flex-direction:column;gap:6px;padding-top:12px">
-        <h1>이 기기는 누구 거예요?</h1>
-        <p class="soft">한 번 고르면 이 기기에서 계속 기억해요.</p>
+        <h1>그림퀴즈에 입장해요</h1>
+        <p class="soft">이 기기에서 쓸 이름을 정해요. 다음부터는 바로 들어가요.</p>
       </div>
-      <div class="pick-grid" id="pickGrid"></div>
+      <form id="entryForm" class="card" autocomplete="off" novalidate>
+        <label class="card-title" for="nameIn">내 이름</label>
+        <input id="nameIn" class="field" maxlength="8" placeholder="최대 8글자 (예: 범택)" enterkeyhint="next" autocomplete="off">
+        <div id="codeWrap" style="display:flex;flex-direction:column;gap:12px">
+          <label class="card-title" for="codeIn">가족 암호</label>
+          <input id="codeIn" class="field" type="password" inputmode="numeric" placeholder="가족 암호" autocomplete="off">
+        </div>
+        <p id="entryErr" class="err" role="alert" hidden></p>
+        <button class="big" type="submit" id="entryBtn">입장하기</button>
+      </form>
+      <p class="soft">한 게임에 최대 8명까지 참가할 수 있어요.</p>
     </section>
 
     <section id="sLobby" class="screen" hidden>
@@ -267,13 +274,23 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc as fdoc, collection as fcol, getDoc, setDoc, deleteDoc, addDoc, onSnapshot as fsnap, query as fquery, where as fwhere, orderBy as forder, limit as flimit, getDocs, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { FIREBASE_CONFIG, FAMILY_CODE } from './config.js';
 (() => {
-const PLAYERS = [
-  {id:'beomtaek', name:'범택', short:'택', color:'#F2772E'},
-  {id:'heejin',   name:'희진', short:'진', color:'#D94A8E'},
-  {id:'chaeeun',  name:'채은', short:'은', color:'#1F9E5F'},
-  {id:'chaehee',  name:'채희', short:'희', color:'#7C4DE8'},
-];
-const P = Object.fromEntries(PLAYERS.map(p => [p.id, p]));
+const MAX_PLAYERS = 8;
+const PCOLORS = ['#F2772E','#D94A8E','#1F9E5F','#7C4DE8','#1E88E5','#E53935','#00897B','#8D6E63'];
+// 플레이어 id = 입장할 때 입력한 이름
+function pn(id){
+  const d = players[id];
+  const name = (d && d.name) || String(id || '');
+  let color = d && d.color;
+  if (!color) color = PCOLORS[hashStr(name) % PCOLORS.length];
+  return { id, name, short: [...name][0] || '?', color };
+}
+function cleanName(v){
+  let n = String(v || '').replace(/[\/\\.\u0000-\u001f\u007f\u200b-\u200f\u2028-\u202e\ufeff]/g, '').replace(/\s+/g, ' ').trim();
+  n = [...n].slice(0, 8).join('').trim();
+  if (/^__.*__$/.test(n)) return '';
+  return n;
+}
+const DEV = (() => { let d = null; try { d = localStorage.getItem('gq_dev') } catch {} if (!d) { d = 'd' + Math.random().toString(36).slice(2, 12); try { localStorage.setItem('gq_dev', d) } catch {} } return d })();
 // 초등 고학년 수준: 그릴 수 있지만 생각해서 표현해야 하는 사물·장소·직업·동작·운동·자연·음식·문화·속담
 const WORDS = ['놀이공원','수족관','도서관','우체국','소방서','공항','지하철','등대','풍차','이글루','롤러코스터','대관람차','회전목마','분수대','에스컬레이터','터널','댐','피라미드','초가집','기와집','무인도','사막','오아시스','폭포','빙산','동굴','정글','화산폭발','다리미','청소기','전자레인지','믹서기','체온계','청진기','현미경','망원경','나침반','지구본','모래시계','자석','건전지','콘센트','리모컨','헤드폰','키보드','프린터','드론','로봇청소기','소화기','구급상자','우편함','자물쇠','계산기','확성기','선풍기','가습기','손전등','낙하산','열기구','잠수함','구급차','굴착기','크레인','트랙터','오토바이','킥보드','스케이트보드','썰매','요트','인공위성','우주정거장','케이블카','헬리콥터','소방차','견인차','마술사','우주비행사','소방관','요리사','미용사','사진작가','화가','지휘자','발레리나','택배기사','과학자','치과의사','수의사','농부','어부','광부','탐험가','기사','심판','마라톤선수','경비원','아나운서','줄다리기','숨바꼭질','눈싸움','팔씨름','물구나무','낮잠','하품','재채기','딸꾹질','양치질','설거지','빨래','등산','낚시','캠핑','소풍','생일파티','졸업식','결혼식','운동회','받아쓰기','이사','응원','박수','셀카','노래방','영화관','불꽃놀이','연날리기','세배','김장','장보기','줄서기','벌서기','잠꼬대','코골이','방귀','꿀밤','태권도','양궁','펜싱','다이빙','스키점프','볼링','탁구','배드민턴','골프','씨름','컬링','서핑','피겨스케이팅','역도','체조','줄타기','번지점프','암벽등반','오로라','소나기','태풍','회오리바람','일식','지진','무지개다리','별똥별','화석','해시계','북극곰','카멜레온','공작새','딱따구리','박쥐','두더지','코뿔소','하마','얼룩말','고릴라','나무늘보','스컹크','해마','가오리','애벌레','올챙이','거미줄','벌집','개미굴','펠리컨','플라밍고','문어다리','고슴도치','너구리','독수리','철새','비빔밥','떡국','팥빙수','솜사탕','팝콘','샌드위치','스파게티','초밥','핫도그','붕어빵','호떡','탕후루','컵라면','도시락','주먹밥','파인애플','코코넛','밤송이','삼겹살','짜장면','떡꼬치','달고나','군고구마','수박화채','한복','태극기','거북선','첨성대','탈춤','윷놀이','제기차기','팽이치기','세뱃돈','송편','무궁화','장승','가마솥','맷돌','허수아비','횡단보도','저금통','졸업앨범','일기장','성적표','알람시계','투명인간','타임머신','마법사','요정','드래곤','인어','좀비','뱀파이어','미라','늑대인간','유에프오','보물지도','해적선','마법지팡이','수정구슬','램프','왕관','성벽','그림의 떡','우물 안 개구리','누워서 떡 먹기','하늘의 별 따기','식은 죽 먹기','발 없는 말','금강산도 식후경','티끌 모아 태산'];
 const W = 800, H = 600;
@@ -304,6 +321,7 @@ function makeDb(){
   const D = ref => ({
     get: async () => wrap(await getDoc(ref)),
     set: d => setDoc(ref, d),
+    merge: d => setDoc(ref, d, { merge: true }),
     delete: () => deleteDoc(ref),
     onSnapshot: (next, err) => fsnap(ref, s => next(wrap(s)), err),
   });
@@ -312,7 +330,7 @@ function makeDb(){
 
 let db = null;
 let unlocked = !FAMILY_CODE || store.get('code') === FAMILY_CODE;
-let me = P[store.get('me')] ? store.get('me') : null;
+let me = cleanName(store.get('me2')) || null;
 let state = null, stateLoaded = false, players = {}, chat = [], hits = [], strokes = [];
 let online = null; // Set of ids, or null when presence is unavailable
 let readOnly = false;
@@ -323,9 +341,9 @@ function toast(msg){
   clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2600);
 }
 function av(id, cls = ''){
-  const p = P[id]; if (!p) return '';
+  const p = pn(id);
   const dot = online && online.has(id) ? '<span class="dot"></span>' : '';
-  return `<span class="av ${cls}" style="background:${p.color}">${p.short}${dot}</span>`;
+  return `<span class="av ${cls}" style="background:${p.color}">${esc(p.short)}${dot}</span>`;
 }
 function writeFailed(e){
   console.warn(e);
@@ -381,11 +399,19 @@ async function transact(check, build){
     });
   } catch (e) { writeFailed(e); return false }
 }
+function joinedIds(){
+  return Object.keys(players).filter(id => players[id] && players[id].joined && players[id].name)
+    .sort((a, b) => (players[a].at || 0) - (players[b].at || 0)).slice(0, MAX_PLAYERS);
+}
+function pickColor(){
+  const used = new Set(Object.keys(players).filter(id => id !== me && players[id].color && (players[id].joined || (online && online.has(id)))).map(id => players[id].color));
+  return PCOLORS.find(c => !used.has(c)) || PCOLORS[Math.floor(Math.random() * PCOLORS.length)];
+}
 function turnFields(base, turn, now){
   return { turn, turnId: base.gameId + '-' + turn, phase: 'choosing', choices: pickWords(3, base.used || []), word: '', deadline: now + 15000, drawStart: 0 };
 }
 async function startGame(){
-  const joined = PLAYERS.filter(p => players[p.id] && players[p.id].joined).map(p => p.id);
+  const joined = joinedIds();
   if (joined.length < 2) return toast('2명 이상 참가해야 시작할 수 있어요');
   const ok = await transact(cur => !cur || cur.phase === 'lobby' || cur.phase === 'end', cur => {
     const now = Date.now();
@@ -741,26 +767,57 @@ function render(){
   if (!db) { if (stateLoaded) show('sNoDb'); return }
   if (!stateLoaded) { show('sLoading'); return }
   const chip = $('#meChip');
-  chip.hidden = !me;
-  if (me) chip.innerHTML = `${av(me, 'sm')}<span>${esc(P[me].name)}</span><span style="opacity:.7">· 바꾸기</span>`;
-  if (!me) { renderPick(); show('sPick'); return }
+  chip.hidden = !me || !unlocked;
+  if (me) chip.innerHTML = `${av(me, 'sm')}<span>${esc(pn(me).name)}</span><span style="opacity:.7">· 바꾸기</span>`;
+  if (!me || !unlocked) { renderEntry(); show('sPick'); return }
   const ph = state ? state.phase : 'lobby';
   if (ph === 'choosing' || ph === 'drawing' || ph === 'reveal') { show('sGame'); renderGame(); return }
   if (ph === 'end') { renderEnd(); show('sEnd'); return }
   renderLobby(); show('sLobby');
 }
-function renderPick(){
-  $('#pickGrid').innerHTML = PLAYERS.map(p => `<button class="pick" data-pick="${p.id}">${av(p.id, 'lg')}${esc(p.name)}</button>`).join('');
+function renderEntry(){
+  $('#codeWrap').hidden = !FAMILY_CODE || unlocked;
+  const n = $('#nameIn');
+  if (!n.value && !n._filled) { n.value = cleanName(store.get('lastName')) || ''; n._filled = true }
 }
+async function enter(){
+  const err = m => { const e = $('#entryErr'); e.textContent = m; e.hidden = false };
+  $('#entryErr').hidden = true;
+  if (FAMILY_CODE && !unlocked) {
+    if ($('#codeIn').value.trim() !== FAMILY_CODE) { $('#codeIn').value = ''; return err('암호가 달라요. 다시 입력해 주세요.') }
+    store.set('code', FAMILY_CODE); unlocked = true;
+  }
+  const name = cleanName($('#nameIn').value);
+  if (!name) return err('이름을 1~8글자로 입력해 주세요.');
+  if (!db) return err('게임판에 연결하는 중이에요. 잠시 후 다시 눌러 주세요.');
+  const pr = presenceDocs[name];
+  if (pr && pr.dev && pr.dev !== DEV && Date.now() - (pr.at || 0) < 50000) return err(`'${name}' 이름은 지금 다른 기기에서 쓰고 있어요. 다른 이름을 써 주세요.`);
+  const ex = players[name];
+  const inLobby = !state || state.phase === 'lobby' || state.phase === 'end';
+  let joined = !!(ex && ex.joined);
+  if (inLobby && !joined && joinedIds().length < MAX_PLAYERS) joined = true;
+  const color = (ex && ex.color) || pickColor();
+  me = name; store.set('me2', me); store.set('lastName', me);
+  const doc = { name, color, joined, at: (ex && ex.joined && ex.at) || Date.now() };
+  players[me] = doc;
+  $('#entryBtn').disabled = true;
+  try { await db.doc('players/' + me).set(doc) } catch (e) { writeFailed(e) }
+  $('#entryBtn').disabled = false;
+  beat(); render();
+  if (inLobby && !joined) toast('참가 인원이 가득 찼어요 (최대 8명)');
+}
+$('#entryForm').addEventListener('submit', e => { e.preventDefault(); enter() });
 function renderLobby(){
   $('#roNotice').hidden = !readOnly;
-  const joined = PLAYERS.filter(p => players[p.id] && players[p.id].joined);
-  $('#joinCount').textContent = joined.length + '명';
-  $('#plist').innerHTML = PLAYERS.map(p => {
-    const on = players[p.id] && players[p.id].joined;
-    const st = on ? '참가' : (online && online.has(p.id) ? '접속 중 · 눌러서 참가' : '눌러서 참가');
-    return `<button class="pcard ${on ? 'on' : ''}" data-join="${p.id}" aria-pressed="${on ? 'true' : 'false'}">${av(p.id)}<span style="min-width:0"><div class="nm">${esc(p.name)}${p.id === me ? ' (나)' : ''}</div><div class="st">${st}</div></span></button>`;
-  }).join('');
+  const joined = joinedIds();
+  $('#joinCount').textContent = `${joined.length} / ${MAX_PLAYERS}명`;
+  const shown = Object.keys(players).filter(id => players[id].name && (players[id].joined || id === me || (online && online.has(id))))
+    .sort((a, b) => (players[b].joined ? 1 : 0) - (players[a].joined ? 1 : 0) || (players[a].at || 0) - (players[b].at || 0));
+  $('#plist').innerHTML = shown.length ? shown.map(id => {
+    const p = pn(id), on = !!players[id].joined, here = online && online.has(id);
+    const st = on ? '참가' : '눌러서 참가';
+    return `<button class="pcard ${on ? 'on' : ''} ${here ? '' : 'away'}" data-join="${esc(id)}" aria-pressed="${on ? 'true' : 'false'}">${av(id)}<span style="min-width:0"><div class="nm" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}${id === me ? ' (나)' : ''}</div><div class="st">${st}</div></span></button>`;
+  }).join('') : '<p class="soft" style="color:var(--card-soft)">아직 아무도 없어요</p>';
   const r = (state && state.rounds) || 3, t = (state && state.time) || 80;
   $('#segRounds').innerHTML = [2, 3, 4].map(v => `<button data-rounds="${v}" aria-pressed="${v === r}">${v}라운드</button>`).join('');
   $('#segTime').innerHTML = [60, 80, 100].map(v => `<button data-time="${v}" aria-pressed="${v === t}">${v}초</button>`).join('');
@@ -771,7 +828,7 @@ function renderLobby(){
 function renderWord(){
   const s = state, el = $('#wordArea'), dr = drawerOf(s);
   if (!s) return;
-  if (s.phase === 'choosing') { el.innerHTML = `<span class="lbl">${esc(P[dr] ? P[dr].name : '')} 차례</span>`; return }
+  if (s.phase === 'choosing') { el.innerHTML = `<span class="lbl">${esc(pn(dr) ? pn(dr).name : '')} 차례</span>`; return }
   if (s.phase === 'reveal') { el.innerHTML = `<span class="full">${esc(s.last && !s.last.skipped ? s.last.word : '')}</span>`; return }
   const chars = [...s.word];
   const showAll = dr === me || hits.some(h => h.by === me) || !s.order.includes(me);
@@ -800,10 +857,11 @@ function renderGame(){
   $('#roundPill').setAttribute('aria-label', `${s.rounds}라운드 중 ${Math.min(round, s.rounds)}라운드`);
   renderWord();
   const hitSet = new Set(hits.map(h => h.by));
-  $('#scores').style.gridTemplateColumns = `repeat(${s.order.length},minmax(0,1fr))`;
+  $('#scores').style.gridTemplateColumns = `repeat(${Math.min(s.order.length, 4)},minmax(0,1fr))`;
+  $('#scores').classList.toggle('many', s.order.length > 4);
   $('#scores').innerHTML = s.order.map(id => {
     const cls = [id === dr && s.phase !== 'reveal' ? 'drawer' : '', s.phase === 'drawing' && hitSet.has(id) ? 'hit' : '', online && !online.has(id) ? 'off' : ''].join(' ');
-    return `<div class="sc ${cls}">${av(id, 'sm')}<span class="meta"><span class="nm">${esc(P[id].name)}${id === dr && s.phase !== 'reveal' ? ' ✎' : ''}</span><span class="pt">${liveScore(id)}</span></span></div>`;
+    return `<div class="sc ${cls}" style="--pc:${pn(id).color}">${av(id, 'sm')}<span class="meta"><span class="nm">${esc(pn(id).name)}${id === dr && s.phase !== 'reveal' ? ' ✎' : ''}</span><span class="pt">${liveScore(id)}</span></span></div>`;
   }).join('');
   // overlays
   const ovC = $('#ovChoose'), ovW = $('#ovWait'), ovR = $('#ovReveal');
@@ -814,13 +872,13 @@ function renderGame(){
     const html = (s.choices || []).map(w => `<button data-choose="${esc(w)}">${esc(w)}</button>`).join('');
     if ($('#choices')._h !== html) { $('#choices').innerHTML = html; $('#choices')._h = html }
   }
-  if (!ovW.hidden) { $('#waitText').textContent = `${P[dr].name}님이 그릴 단어를 고르고 있어요`; $('#waitSub').textContent = `${round}라운드 · 잠시만 기다려요` }
+  if (!ovW.hidden) { $('#waitText').textContent = `${pn(dr).name}님이 그릴 단어를 고르고 있어요`; $('#waitSub').textContent = `${round}라운드 · 잠시만 기다려요` }
   if (!ovR.hidden && s.last) {
     const L = s.last;
-    $('#revealLead').textContent = L.skipped ? `${P[L.drawer] ? P[L.drawer].name : ''}님 차례를 건너뛰었어요` : '정답은';
+    $('#revealLead').textContent = L.skipped ? `${pn(L.drawer) ? pn(L.drawer).name : ''}님 차례를 건너뛰었어요` : '정답은';
     $('#revealWord').textContent = L.skipped ? '' : L.word;
     const g = Object.entries(L.pts || {}).sort((a, b) => b[1] - a[1]);
-    $('#gains').innerHTML = g.length ? g.map(([id, v]) => `<span class="gain">${av(id, 'sm')}${esc(P[id] ? P[id].name : '')} +${v}</span>`).join('') : (L.skipped ? '' : '<span class="s">아무도 못 맞혔어요</span>');
+    $('#gains').innerHTML = g.length ? g.map(([id, v]) => `<span class="gain">${av(id, 'sm')}${esc(pn(id) ? pn(id).name : '')} +${v}</span>`).join('') : (L.skipped ? '' : '<span class="s">아무도 못 맞혔어요</span>');
   }
   $('#tools').hidden = !(mine && s.phase === 'drawing');
   const inp = $('#chatIn'), canGuess = player && s.phase === 'drawing' && !mine && !hitSet.has(me);
@@ -835,7 +893,7 @@ function renderChat(){
   const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
   el.innerHTML = items.length ? items.map(m => {
     if (m.kind === 'note') return `<div class="msg note">${esc(m.text)}</div>`;
-    const p = P[m.by]; if (!p) return '';
+    const p = pn(m.by); if (!p) return '';
     if (m.kind === 'hit') return `<div class="msg hit">✓ ${esc(p.name)}님이 정답을 맞혔어요!</div>`;
     return `<div class="msg"><b style="color:${p.color}">${esc(p.name)}</b>${esc(m.text)}</div>`;
   }).join('') : '<div class="msg empty">정답이나 응원을 여기에 적어요</div>';
@@ -843,11 +901,11 @@ function renderChat(){
 }
 function renderEnd(){
   const s = state, sc = (s && s.scores) || {};
-  const ids = Object.keys(sc).filter(id => P[id]).sort((a, b) => sc[b] - sc[a]);
+  const ids = Object.keys(sc).filter(id => pn(id)).sort((a, b) => sc[b] - sc[a]);
   let pos = 0, prev = null;
-  $('#rank').innerHTML = ids.map((id, i) => { if (sc[id] !== prev) { pos = i + 1; prev = sc[id] } return `<div class="rk ${pos === 1 ? 'first' : ''}"><span class="pos">${pos}</span>${av(id)}<span class="nm">${esc(P[id].name)}</span><span class="pt">${sc[id]}</span></div>` }).join('');
+  $('#rank').innerHTML = ids.map((id, i) => { if (sc[id] !== prev) { pos = i + 1; prev = sc[id] } return `<div class="rk ${pos === 1 ? 'first' : ''}"><span class="pos">${pos}</span>${av(id)}<span class="nm">${esc(pn(id).name)}</span><span class="pt">${sc[id]}</span></div>` }).join('');
   const top = ids.filter(id => sc[id] === sc[ids[0]]);
-  $('#endTitle').textContent = top.length === 1 ? `${P[top[0]].name} 우승!` : top.map(id => P[id].name).join(', ') + ' 공동 우승!';
+  $('#endTitle').textContent = top.length === 1 ? `${pn(top[0]).name} 우승!` : top.map(id => pn(id).name).join(', ') + ' 공동 우승!';
   $('#againBtn').disabled = readOnly;
 }
 
@@ -875,14 +933,15 @@ renderTools();
 document.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   const d = b.dataset;
-  if (d.pick) {
-    me = d.pick; store.set('me', me);
-    beat();
-    if (db && (!state || state.phase === 'lobby') && !(players[me] && players[me].joined)) db.doc('players/' + me).set({ joined: true, at: Date.now() }).catch(writeFailed);
-    render(); return;
+  if (b.id === 'meChip') { me = null; store.set('me2', null); $('#nameIn').value = ''; render(); return }
+  if (d.join) {
+    if (readOnly || !players[d.join]) return;
+    const on = !players[d.join].joined;
+    if (on && joinedIds().length >= MAX_PLAYERS) { toast('최대 8명까지 참가할 수 있어요'); return }
+    const patch = { joined: on, at: Date.now() };
+    players[d.join] = { ...players[d.join], ...patch }; renderLobby();
+    db.doc('players/' + d.join).merge(patch).catch(writeFailed); return;
   }
-  if (b.id === 'meChip') { me = null; store.set('me', null); render(); return }
-  if (d.join) { if (readOnly) return; const on = !(players[d.join] && players[d.join].joined); players[d.join] = { joined: on }; renderLobby(); db.doc('players/' + d.join).set({ joined: on, at: Date.now() }).catch(writeFailed); return }
   if (d.rounds) { setSetting('rounds', +d.rounds); return }
   if (d.time) { setSetting('time', +d.time); return }
   if (b.id === 'startBtn') { b.disabled = true; startGame().finally(() => render()); return }
@@ -913,7 +972,7 @@ $('#chatIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preve
 let beatT = null;
 function beat(){
   clearTimeout(beatT);
-  if (db && me) db.doc('presence/' + me).set({ at: Date.now() }).catch(() => {});
+  if (db && me && unlocked) db.doc('presence/' + me).set({ at: Date.now(), dev: DEV }).catch(() => {});
   beatT = setTimeout(beat, 20000);
 }
 let presenceDocs = {};
@@ -924,7 +983,6 @@ function recomputeOnline(){
   online = s;
 }
 function boot(){
-  if (!unlocked) { showGate(); return }
   if (!configured) { stateLoaded = true; render(); return }
   render();
   const loadTimer = setTimeout(() => { $('#loadMsg').textContent = '연결이 늦어지고 있어요. 인터넷 연결을 확인해 주세요' }, 10000);
@@ -941,15 +999,6 @@ function boot(){
   db.collection('presence').onSnapshot(q => { presenceDocs = {}; for (const d of q.docs) presenceDocs[d.id] = d.data(); recomputeOnline(); render() }, e => console.warn(e));
   setInterval(() => { recomputeOnline() }, 15000);
   beat();
-}
-function showGate(){
-  show('sGate');
-  const f = $('#gateForm');
-  f.onsubmit = e => {
-    e.preventDefault();
-    if ($('#gateIn').value.trim() === FAMILY_CODE) { store.set('code', FAMILY_CODE); unlocked = true; boot() }
-    else { $('#gateErr').hidden = false; $('#gateIn').value = '' }
-  };
 }
 boot();
 })();
