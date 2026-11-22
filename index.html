@@ -635,6 +635,13 @@ function tick(){
   updateTimer();
 }
 setInterval(tick, 250);
+// 폰 화면이 다시 켜지면 밀린 진행(단어 자동 선택, 차례 넘기기)을 바로 처리해요
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  attempt = { key: '', at: 0 };
+  if (typeof beat === 'function') beat();
+  tick();
+});
 function updateTimer(){
   const s = state, el = $('#timer');
   if (!s || !['choosing', 'drawing', 'reveal'].includes(s.phase)) return;
