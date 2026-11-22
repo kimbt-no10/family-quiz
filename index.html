@@ -776,19 +776,21 @@ function render(){
   renderLobby(); show('sLobby');
 }
 function renderEntry(){
-  $('#codeWrap').hidden = !FAMILY_CODE || unlocked;
+  $('#codeWrap').hidden = !FAMILY_CODE;
   const n = $('#nameIn');
   if (!n.value && !n._filled) { n.value = cleanName(store.get('lastName')) || ''; n._filled = true }
 }
 async function enter(){
   const err = m => { const e = $('#entryErr'); e.textContent = m; e.hidden = false };
   $('#entryErr').hidden = true;
-  if (FAMILY_CODE && !unlocked) {
-    if ($('#codeIn').value.trim() !== FAMILY_CODE) { $('#codeIn').value = ''; return err('암호가 달라요. 다시 입력해 주세요.') }
-    store.set('code', FAMILY_CODE); unlocked = true;
-  }
   const name = cleanName($('#nameIn').value);
   if (!name) return err('이름을 1~8글자로 입력해 주세요.');
+  if (FAMILY_CODE) {
+    const code = $('#codeIn').value.trim();
+    if (!code) { $('#codeIn').focus(); return err('가족 암호를 입력해야 입장할 수 있어요.') }
+    if (code !== FAMILY_CODE) { $('#codeIn').value = ''; $('#codeIn').focus(); return err('암호가 달라요. 다시 입력해 주세요.') }
+    store.set('code', FAMILY_CODE); unlocked = true;
+  }
   if (!db) return err('게임판에 연결하는 중이에요. 잠시 후 다시 눌러 주세요.');
   const pr = presenceDocs[name];
   if (pr && pr.dev && pr.dev !== DEV && Date.now() - (pr.at || 0) < 50000) return err(`'${name}' 이름은 지금 다른 기기에서 쓰고 있어요. 다른 이름을 써 주세요.`);
@@ -803,6 +805,7 @@ async function enter(){
   $('#entryBtn').disabled = true;
   try { await db.doc('players/' + me).set(doc) } catch (e) { writeFailed(e) }
   $('#entryBtn').disabled = false;
+  $('#codeIn').value = '';
   beat(); render();
   if (inLobby && !joined) toast('참가 인원이 가득 찼어요 (최대 8명)');
 }
@@ -933,7 +936,7 @@ renderTools();
 document.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   const d = b.dataset;
-  if (b.id === 'meChip') { me = null; store.set('me2', null); $('#nameIn').value = ''; render(); return }
+  if (b.id === 'meChip') { me = null; store.set('me2', null); $('#nameIn').value = ''; $('#codeIn').value = ''; render(); return }
   if (d.join) {
     if (readOnly || !players[d.join]) return;
     const on = !players[d.join].joined;
